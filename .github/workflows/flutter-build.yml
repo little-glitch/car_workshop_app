@@ -11,7 +11,7 @@ jobs:
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: '3.19.0'  # This has Dart 3.7.0+
+        flutter-version: '3.38.7'  # EXACTLY as the error suggests!
     
     - name: Get packages
       run: flutter pub get
