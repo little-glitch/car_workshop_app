@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'location_service.dart';
 
 void main() {
   runApp(const CarWorkshopApp());
@@ -21,17 +22,30 @@ class CarWorkshopApp extends StatelessWidget {
   }
 }
 
-class HomePage extends StatelessWidget {
-  @override
-Widget build(BuildContext context) {
-
-  LocationService.getCurrentLocation().then((pos) {
-    print('LAT: ${pos.latitude}, LNG: ${pos.longitude}');
-  });
-
-  return Scaffold(
-
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  double? lat;
+  double? lng;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocation();
+  }
+
+  Future<void> _loadLocation() async {
+    final position = await LocationService.getCurrentLocation();
+    setState(() {
+      lat = position.latitude;
+      lng = position.longitude;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +53,6 @@ Widget build(BuildContext context) {
       appBar: AppBar(
         title: const Text('Nearby Workshops'),
         centerTitle: true,
-        elevation: 0,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -48,51 +61,16 @@ Widget build(BuildContext context) {
           children: [
             const Text(
               'Find help for your car, fast 🚗',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Showing workshops near your location',
-              style: TextStyle(color: Colors.grey),
+            Text(
+              lat == null
+                  ? 'Getting your location...'
+                  : 'Location: $lat , $lng',
+              style: const TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 20),
-
-            // Search bar
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 8,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const TextField(
-                decoration: InputDecoration(
-                  icon: Icon(Icons.search),
-                  hintText: 'Search workshop or service',
-                  border: InputBorder.none,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            const Text(
-              'Nearest Workshops',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 12),
 
             Expanded(
               child: ListView(
@@ -143,53 +121,25 @@ class WorkshopCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 8,
-            offset: Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black12, blurRadius: 8),
         ],
       ),
       child: Row(
         children: [
-          Container(
-            height: 48,
-            width: 48,
-            decoration: BoxDecoration(
-              color: Colors.blue.shade100,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.car_repair,
-              color: Colors.blue,
-            ),
-          ),
+          const Icon(Icons.car_repair, color: Colors.blue),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  distance,
-                  style: const TextStyle(color: Colors.grey),
-                ),
+                Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(distance, style: const TextStyle(color: Colors.grey)),
               ],
             ),
           ),
           Row(
             children: [
-              const Icon(
-                Icons.star,
-                color: Colors.amber,
-                size: 18,
-              ),
+              const Icon(Icons.star, color: Colors.amber, size: 18),
               const SizedBox(width: 4),
               Text(rating.toString()),
             ],
