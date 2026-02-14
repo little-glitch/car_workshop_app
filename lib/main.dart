@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'location_service.dart';
+import 'services/location_service.dart';
 
 void main() {
   runApp(const CarWorkshopApp());
