@@ -1,6 +1,22 @@
 import 'package:flutter/material.dart';
 import 'services/location_service.dart';
 
+void main() {
+  runApp(const CarWorkshopApp());
+}
+
+class CarWorkshopApp extends StatelessWidget {
+  const CarWorkshopApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: HomePage(),
+    );
+  }
+}
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -10,8 +26,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   String? placeName;
-  String? lat;
-  String? lng;
+  double? lat;
+  double? lng;
   bool loading = true;
 
   @override
@@ -20,14 +36,26 @@ class _HomePageState extends State<HomePage> {
     loadLocation();
   }
 
-  void loadLocation() async {
-    final location = await LocationService.getExactLocation();
-    setState(() {
-      placeName = location['placeName'];
-      lat = location['latitude'];
-      lng = location['longitude'];
-      loading = false;
-    });
+  Future<void> loadLocation() async {
+    try {
+      final position = await LocationService.getCurrentLocation();
+      final place = await LocationService.getPlaceName(
+        position.latitude,
+        position.longitude,
+      );
+
+      setState(() {
+        placeName = place;
+        lat = position.latitude;
+        lng = position.longitude;
+        loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        placeName = 'Location error';
+        loading = false;
+      });
+    }
   }
 
   @override
