@@ -22,6 +22,15 @@ class CarWorkshopApp extends StatelessWidget {
 }
 
 class HomePage extends StatelessWidget {
+  @override
+Widget build(BuildContext context) {
+
+  LocationService.getCurrentLocation().then((pos) {
+    print('LAT: ${pos.latitude}, LNG: ${pos.longitude}');
+  });
+
+  return Scaffold(
+
   const HomePage({super.key});
 
   @override
