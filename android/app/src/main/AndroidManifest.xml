@@ -4,6 +4,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
+    <!-- ADD THIS LINE - INTERNET PERMISSION for API calls -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="car_workshop_app"
         android:name="${applicationName}"
