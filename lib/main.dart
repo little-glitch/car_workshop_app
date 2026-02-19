@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import 'services/location_service.dart';
+import 'services/workshop_service.dart';
+import 'models/workshop.dart';
 
 void main() {
   runApp(const CarWorkshopApp());
@@ -34,16 +38,24 @@ class _HomePageState extends State<HomePage> {
   double? lng;
   String? placeName;
 
+  bool loading = true;
+  List<Workshop> workshops = [];
+
   @override
   void initState() {
     super.initState();
-    _loadLocation();
+    _loadLocationAndWorkshops();
   }
 
-  Future<void> _loadLocation() async {
+  Future<void> _loadLocationAndWorkshops() async {
     try {
       final position = await LocationService.getCurrentLocation();
       final place = await LocationService.getPlaceName(
+        position.latitude,
+        position.longitude,
+      );
+
+      final results = await WorkshopService.getNearbyWorkshops(
         position.latitude,
         position.longitude,
       );
@@ -52,12 +64,25 @@ class _HomePageState extends State<HomePage> {
         lat = position.latitude;
         lng = position.longitude;
         placeName = place;
+        workshops = results;
+        loading = false;
       });
     } catch (e) {
       setState(() {
         placeName = 'Unable to get location';
+        loading = false;
       });
     }
+  }
+
+  void _openInGoogleMaps(double lat, double lng) {
+    final url =
+        'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+
+    launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
   }
 
   @override
@@ -78,7 +103,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 6),
 
-            /// 🔹 TEXT LOCATION (NEW)
+            /// 📍 TEXT LOCATION
             Text(
               placeName == null
                   ? 'Getting your location...'
@@ -89,7 +114,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            /// 🔹 NUMBERS (UNCHANGED)
+            /// 🔢 COORDINATES (optional, kept as you wanted)
             if (lat != null && lng != null)
               Text(
                 'Lat: $lat , Lng: $lng',
@@ -99,25 +124,28 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 20),
 
             Expanded(
-              child: ListView(
-                children: const [
-                  WorkshopCard(
-                    name: 'SpeedFix Auto Garage',
-                    distance: '0.8 km away',
-                    rating: 4.6,
-                  ),
-                  WorkshopCard(
-                    name: 'QuickCare Car Service',
-                    distance: '1.2 km away',
-                    rating: 4.3,
-                  ),
-                  WorkshopCard(
-                    name: 'AutoPro Workshop',
-                    distance: '2.0 km away',
-                    rating: 4.8,
-                  ),
-                ],
-              ),
+              child: loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : workshops.isEmpty
+                      ? const Center(
+                          child: Text('No workshops found nearby'),
+                        )
+                      : ListView.builder(
+                          itemCount: workshops.length,
+                          itemBuilder: (context, index) {
+                            final w = workshops[index];
+
+                            return GestureDetector(
+                              onTap: () =>
+                                  _openInGoogleMaps(w.lat, w.lng),
+                              child: WorkshopCard(
+                                name: w.name,
+                                distance: 'Tap to open in Google Maps',
+                                rating: 4.5,
+                              ),
+                            );
+                          },
+                        ),
             ),
           ],
         ),
