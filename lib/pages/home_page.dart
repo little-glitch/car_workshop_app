@@ -108,21 +108,20 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // 🔴 SIMPLE MAPS OPENING - THIS WILL WORK
   Future<void> _openInGoogleMaps(Workshop workshop) async {
-    print('Opening maps for: ${workshop.name} at ${workshop.lat}, ${workshop.lng}');
-    
-    // Simple Google Maps URL
-    final url = 'https://www.google.com/maps/search/?api=1&query=${workshop.lat},${workshop.lng}';
+    final String url = 'https://www.google.com/maps?q=${workshop.lat},${workshop.lng}';
     
     try {
       final uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
+        print('✅ Maps opened successfully');
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Could not open maps'),
+              content: const Text('Could not open maps'),
               backgroundColor: Colors.red.shade400,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -131,11 +130,11 @@ class _HomePageState extends State<HomePage> {
         }
       }
     } catch (e) {
-      print('Maps error: $e');
+      print('❌ Maps error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error opening maps'),
+            content: Text('Error: ${e.toString()}'),
             backgroundColor: Colors.red.shade400,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -511,6 +510,7 @@ class PremiumWorkshopCard extends StatelessWidget {
     // Determine status color and icon based on status string
     Color statusColor = Colors.grey;
     IconData statusIcon = Icons.access_time_rounded;
+    String statusText = status['text'] as String;
     
     if (status['status'] == 'open') {
       statusColor = Colors.green;
@@ -520,24 +520,25 @@ class PremiumWorkshopCard extends StatelessWidget {
       statusIcon = Icons.cancel_rounded;
     }
     
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          onTap: onTap,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -688,7 +689,7 @@ class PremiumWorkshopCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        status['text'] as String,
+                        statusText,
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
