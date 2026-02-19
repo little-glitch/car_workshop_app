@@ -37,12 +37,12 @@ class Workshop {
     return '${distance.toStringAsFixed(1)} km away';
   }
 
+  // Return status info as strings/booleans instead of Colors/Icons
   Map<String, dynamic> get statusInfo {
     if (openingHours.isEmpty || openingHours == 'Hours unknown') {
       return {
         'text': 'Hours unknown',
-        'color': Colors.grey,
-        'icon': Icons.access_time_rounded
+        'status': 'unknown', // 'open', 'closed', or 'unknown'
       };
     }
     
@@ -55,8 +55,7 @@ class Workshop {
     
     return {
       'text': isOpen ? 'Open now' : 'Closed',
-      'color': isOpen ? Colors.green : Colors.red,
-      'icon': isOpen ? Icons.check_circle_rounded : Icons.cancel_rounded
+      'status': isOpen ? 'open' : 'closed',
     };
   }
 
@@ -75,17 +74,18 @@ class Workshop {
     }
   }
 
-  IconData get typeIcon {
+  // Return emoji instead of IconData for model
+  String get typeEmoji {
     switch (workshopType) {
       case 'car_repair':
       case 'auto_repair':
-        return Icons.build_rounded;
+        return '🔧';
       case 'car_wash':
-        return Icons.local_car_wash_rounded;
+        return '🧼';
       case 'tyres':
-        return Icons.settings_rounded;
+        return '⚙️';
       default:
-        return Icons.garage_rounded;
+        return '🔨';
     }
   }
 }

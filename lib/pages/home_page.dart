@@ -77,7 +77,7 @@ class _HomePageState extends State<HomePage> {
     });
     
     try {
-      print('Fetching workshops at $lat, $lng within ${selectedRadius}km');
+      print('🔍 Searching at: $lat, $lng with radius $selectedRadius km');
       
       final results = await WorkshopService.fetchNearbyWorkshops(
         lat!, 
@@ -85,7 +85,7 @@ class _HomePageState extends State<HomePage> {
         selectedRadius * 1000 // Convert km to meters
       );
       
-      print('Fetched ${results.length} workshops');
+      print('📊 Found ${results.length} workshops');
       
       setState(() {
         workshops = results;
@@ -97,7 +97,7 @@ class _HomePageState extends State<HomePage> {
         });
       }
     } catch (e) {
-      print('Workshop fetch error: $e');
+      print('❌ Error: $e');
       setState(() {
         errorMessage = 'Error loading workshops. Please try again.';
       });
@@ -111,55 +111,34 @@ class _HomePageState extends State<HomePage> {
   Future<void> _openInGoogleMaps(Workshop workshop) async {
     print('Opening maps for: ${workshop.name} at ${workshop.lat}, ${workshop.lng}');
     
-    // Method 1: Google Maps URL with coordinates
-    final googleMapsUrl = 'https://www.google.com/maps/search/?api=1&query=${workshop.lat},${workshop.lng}';
-    
-    // Method 2: Direct coordinates URL (fallback)
-    final directUrl = 'https://www.google.com/maps?q=${workshop.lat},${workshop.lng}';
-    
-    // Method 3: Try to open in Google Maps app first (if installed)
-    final appUrl = 'geo:${workshop.lat},${workshop.lng}?q=${workshop.lat},${workshop.lng}(${Uri.encodeComponent(workshop.name)})';
+    // Simple Google Maps URL
+    final url = 'https://www.google.com/maps/search/?api=1&query=${workshop.lat},${workshop.lng}';
     
     try {
-      // Try app URL first
-      final appUri = Uri.parse(appUrl);
-      if (await canLaunchUrl(appUri)) {
-        await launchUrl(appUri);
-        return;
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not open maps'),
+              backgroundColor: Colors.red.shade400,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
       }
-      
-      // Fallback to web URL
-      final webUri = Uri.parse(googleMapsUrl);
-      if (await canLaunchUrl(webUri)) {
-        await launchUrl(webUri, mode: LaunchMode.externalApplication);
-        return;
-      }
-      
-      // Final fallback
-      final fallbackUri = Uri.parse(directUrl);
-      if (await canLaunchUrl(fallbackUri)) {
-        await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
-        return;
-      }
-      
-      throw 'No maps application available';
-      
     } catch (e) {
       print('Maps error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
-                const SizedBox(width: 12),
-                Expanded(child: Text('Could not open maps. Try again.')),
-              ],
-            ),
-            behavior: SnackBarBehavior.floating,
+            content: Text('Error opening maps'),
             backgroundColor: Colors.red.shade400,
+            behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -299,7 +278,9 @@ class _HomePageState extends State<HomePage> {
                             label: Text('$radius km'),
                             selected: isSelected,
                             onSelected: (selected) {
-                              setState(() => selectedRadius = radius);
+                              setState(() {
+                                selectedRadius = radius;
+                              });
                               _fetchNearbyWorkshops();
                             },
                             backgroundColor: Colors.white,
@@ -527,6 +508,18 @@ class PremiumWorkshopCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = workshop.statusInfo;
     
+    // Determine status color and icon based on status string
+    Color statusColor = Colors.grey;
+    IconData statusIcon = Icons.access_time_rounded;
+    
+    if (status['status'] == 'open') {
+      statusColor = Colors.green;
+      statusIcon = Icons.check_circle_rounded;
+    } else if (status['status'] == 'closed') {
+      statusColor = Colors.red;
+      statusIcon = Icons.cancel_rounded;
+    }
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -550,7 +543,7 @@ class PremiumWorkshopCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header with icon and name
+                // Header with emoji and name
                 Row(
                   children: [
                     Container(
@@ -565,10 +558,11 @@ class PremiumWorkshopCard extends StatelessWidget {
                         ),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Icon(
-                        workshop.typeIcon,
-                        color: const Color(0xFF5E4B8C),
-                        size: 28,
+                      child: Center(
+                        child: Text(
+                          workshop.typeEmoji,
+                          style: const TextStyle(fontSize: 28),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -681,16 +675,16 @@ class PremiumWorkshopCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: (status['color'] as Color).withOpacity(0.1),
+                    color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        status['icon'] as IconData,
+                        statusIcon,
                         size: 16,
-                        color: status['color'] as Color,
+                        color: statusColor,
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -698,7 +692,7 @@ class PremiumWorkshopCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: status['color'] as Color,
+                          color: statusColor,
                         ),
                       ),
                     ],
