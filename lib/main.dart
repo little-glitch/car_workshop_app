@@ -32,6 +32,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   double? lat;
   double? lng;
+  String? placeName;
 
   @override
   void initState() {
@@ -40,11 +41,23 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadLocation() async {
-    final position = await LocationService.getCurrentLocation();
-    setState(() {
-      lat = position.latitude;
-      lng = position.longitude;
-    });
+    try {
+      final position = await LocationService.getCurrentLocation();
+      final place = await LocationService.getPlaceName(
+        position.latitude,
+        position.longitude,
+      );
+
+      setState(() {
+        lat = position.latitude;
+        lng = position.longitude;
+        placeName = place;
+      });
+    } catch (e) {
+      setState(() {
+        placeName = 'Unable to get location';
+      });
+    }
   }
 
   @override
@@ -64,13 +77,27 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
+
+            /// 🔹 TEXT LOCATION (NEW)
             Text(
-              lat == null
+              placeName == null
                   ? 'Getting your location...'
-                  : 'Location: $lat , $lng',
-              style: const TextStyle(color: Colors.grey),
+                  : '📍 $placeName',
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
             ),
+
+            /// 🔹 NUMBERS (UNCHANGED)
+            if (lat != null && lng != null)
+              Text(
+                'Lat: $lat , Lng: $lng',
+                style: const TextStyle(color: Colors.grey),
+              ),
+
             const SizedBox(height: 20),
+
             Expanded(
               child: ListView(
                 children: const [
@@ -131,10 +158,14 @@ class WorkshopCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(distance,
-                    style: const TextStyle(color: Colors.grey)),
+                Text(
+                  name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  distance,
+                  style: const TextStyle(color: Colors.grey),
+                ),
               ],
             ),
           ),
