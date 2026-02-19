@@ -25,23 +25,67 @@ class Workshop {
 
   String get formattedDistance {
     if (distance < 1) {
-      return '${(distance * 1000).toStringAsFixed(0)} m away';
+      return '${(distance * 1000).toStringAsFixed(0)}m';
+    }
+    return '${distance.toStringAsFixed(1)}km';
+  }
+
+  String get distanceText {
+    if (distance < 1) {
+      return '${(distance * 1000).toStringAsFixed(0)} meters away';
     }
     return '${distance.toStringAsFixed(1)} km away';
   }
 
-  String get status {
+  Map<String, dynamic> get statusInfo {
     if (openingHours.isEmpty || openingHours == 'Hours unknown') {
-      return '⏰ Hours unknown';
+      return {
+        'text': 'Hours unknown',
+        'color': Colors.grey,
+        'icon': Icons.access_time_rounded
+      };
     }
     
     var now = DateTime.now();
     var hour = now.hour;
+    var weekday = now.weekday;
     
-    if (hour >= 9 && hour <= 17 && now.weekday <= 5) {
-      return '🟢 Open now';
-    } else {
-      return '🔴 Closed';
+    // Simple check - most shops open 9am-6pm Mon-Sat
+    bool isOpen = (hour >= 9 && hour <= 18) && weekday <= 6;
+    
+    return {
+      'text': isOpen ? 'Open now' : 'Closed',
+      'color': isOpen ? Colors.green : Colors.red,
+      'icon': isOpen ? Icons.check_circle_rounded : Icons.cancel_rounded
+    };
+  }
+
+  String get typeDisplay {
+    switch (workshopType) {
+      case 'car_repair':
+        return 'Repair Shop';
+      case 'auto_repair':
+        return 'Auto Repair';
+      case 'car_wash':
+        return 'Car Wash';
+      case 'tyres':
+        return 'Tyre Shop';
+      default:
+        return 'Workshop';
+    }
+  }
+
+  IconData get typeIcon {
+    switch (workshopType) {
+      case 'car_repair':
+      case 'auto_repair':
+        return Icons.build_rounded;
+      case 'car_wash':
+        return Icons.local_car_wash_rounded;
+      case 'tyres':
+        return Icons.settings_rounded;
+      default:
+        return Icons.garage_rounded;
     }
   }
 }

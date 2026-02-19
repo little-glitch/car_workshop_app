@@ -21,7 +21,7 @@ class _HomePageState extends State<HomePage> {
   String? errorMessage;
   int selectedRadius = 5; // Default 5km
 
-  final List<int> radiusOptions = [1, 2, 5, 10, 20];
+  final List<int> radiusOptions = [1, 2, 5, 10, 20, 30];
 
   @override
   void initState() {
@@ -33,6 +33,7 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       isLoadingLocation = true;
       errorMessage = null;
+      workshops = [];
     });
     
     try {
@@ -51,6 +52,7 @@ class _HomePageState extends State<HomePage> {
       await _fetchNearbyWorkshops();
       
     } catch (e) {
+      print('Location error: $e');
       setState(() {
         errorMessage = 'Unable to get location. Please enable location services.';
       });
@@ -62,7 +64,12 @@ class _HomePageState extends State<HomePage> {
   }
   
   Future<void> _fetchNearbyWorkshops() async {
-    if (lat == null || lng == null) return;
+    if (lat == null || lng == null) {
+      setState(() {
+        errorMessage = 'Location not available. Please refresh.';
+      });
+      return;
+    }
     
     setState(() {
       isLoadingWorkshops = true;
@@ -70,11 +77,15 @@ class _HomePageState extends State<HomePage> {
     });
     
     try {
+      print('Fetching workshops at $lat, $lng within ${selectedRadius}km');
+      
       final results = await WorkshopService.fetchNearbyWorkshops(
         lat!, 
         lng!, 
         selectedRadius * 1000 // Convert km to meters
       );
+      
+      print('Fetched ${results.length} workshops');
       
       setState(() {
         workshops = results;
@@ -82,10 +93,11 @@ class _HomePageState extends State<HomePage> {
       
       if (results.isEmpty) {
         setState(() {
-          errorMessage = 'No workshops found within $selectedRadius km.';
+          errorMessage = 'No workshops found within $selectedRadius km. Try increasing the radius.';
         });
       }
     } catch (e) {
+      print('Workshop fetch error: $e');
       setState(() {
         errorMessage = 'Error loading workshops. Please try again.';
       });
@@ -97,32 +109,57 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _openInGoogleMaps(Workshop workshop) async {
-    final query = Uri.encodeComponent('${workshop.lat},${workshop.lng}');
-    final url = 'https://www.google.com/maps/search/?api=1&query=$query';
+    print('Opening maps for: ${workshop.name} at ${workshop.lat}, ${workshop.lng}');
     
-    final uri = Uri.parse(url);
+    // Method 1: Google Maps URL with coordinates
+    final googleMapsUrl = 'https://www.google.com/maps/search/?api=1&query=${workshop.lat},${workshop.lng}';
+    
+    // Method 2: Direct coordinates URL (fallback)
+    final directUrl = 'https://www.google.com/maps?q=${workshop.lat},${workshop.lng}';
+    
+    // Method 3: Try to open in Google Maps app first (if installed)
+    final appUrl = 'geo:${workshop.lat},${workshop.lng}?q=${workshop.lat},${workshop.lng}(${Uri.encodeComponent(workshop.name)})';
+    
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, 
-          mode: LaunchMode.externalApplication,
-          webOnlyWindowName: '_blank',
-        );
-      } else {
-        final fallbackUrl = 'https://www.google.com/maps?q=${workshop.lat},${workshop.lng}';
-        final fallbackUri = Uri.parse(fallbackUrl);
-        if (await canLaunchUrl(fallbackUri)) {
-          await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
-        } else {
-          throw 'Could not launch maps';
-        }
+      // Try app URL first
+      final appUri = Uri.parse(appUrl);
+      if (await canLaunchUrl(appUri)) {
+        await launchUrl(appUri);
+        return;
       }
+      
+      // Fallback to web URL
+      final webUri = Uri.parse(googleMapsUrl);
+      if (await canLaunchUrl(webUri)) {
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
+        return;
+      }
+      
+      // Final fallback
+      final fallbackUri = Uri.parse(directUrl);
+      if (await canLaunchUrl(fallbackUri)) {
+        await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+        return;
+      }
+      
+      throw 'No maps application available';
+      
     } catch (e) {
+      print('Maps error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not open maps'),
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Could not open maps. Try again.')),
+              ],
+            ),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.red.shade400,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -131,44 +168,58 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        title: const Text(
-          '🔧 Workshop Finder',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.5,
-          ),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF5E4B8C), // Premium purple
+          brightness: Brightness.light,
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _loadLocation,
-            tooltip: 'Refresh',
-          ),
-        ],
+        fontFamily: 'Inter',
       ),
-      body: CustomScrollView(
-        slivers: [
-          // Location Header Sliver
-          SliverToBoxAdapter(
-            child: Container(
+      home: Scaffold(
+        backgroundColor: const Color(0xFFF8F7FA), // Light premium background
+        appBar: AppBar(
+          title: const Text(
+            'Premium Workshops',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 22,
+              letterSpacing: -0.5,
+            ),
+          ),
+          centerTitle: false,
+          backgroundColor: Colors.white,
+          foregroundColor: const Color(0xFF2D2A3A),
+          elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              onPressed: _loadLocation,
+              tooltip: 'Refresh location',
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            // Premium Location Card
+            Container(
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.blue.shade400, Colors.blue.shade700],
+                  colors: [
+                    const Color(0xFF5E4B8C),
+                    const Color(0xFF8A6FB0),
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.blue.shade200.withOpacity(0.5),
+                    color: const Color(0xFF5E4B8C).withOpacity(0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -194,21 +245,22 @@ class _HomePageState extends State<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Current Location',
+                          'YOUR LOCATION',
                           style: TextStyle(
                             color: Colors.white70,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.5,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.8,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
                           placeName ?? 'Getting location...',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            height: 1.3,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -219,21 +271,20 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-          ),
 
-          // Radius Selector Sliver
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+            // Premium Radius Selector
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Search Radius',
+                    'SEARCH RADIUS',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      color: Color(0xFF6B6578),
+                      letterSpacing: 0.8,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -243,24 +294,30 @@ class _HomePageState extends State<HomePage> {
                       children: radiusOptions.map((radius) {
                         final isSelected = radius == selectedRadius;
                         return Padding(
-                          padding: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.only(right: 10),
                           child: FilterChip(
                             label: Text('$radius km'),
                             selected: isSelected,
                             onSelected: (selected) {
-                              setState(() {
-                                selectedRadius = radius;
-                              });
+                              setState(() => selectedRadius = radius);
                               _fetchNearbyWorkshops();
                             },
-                            backgroundColor: Colors.grey.shade100,
-                            selectedColor: Colors.blue.shade100,
-                            checkmarkColor: Colors.blue.shade700,
+                            backgroundColor: Colors.white,
+                            selectedColor: const Color(0xFF5E4B8C),
+                            checkmarkColor: Colors.white,
                             labelStyle: TextStyle(
-                              color: isSelected ? Colors.blue.shade700 : Colors.black87,
+                              color: isSelected ? Colors.white : const Color(0xFF2D2A3A),
                               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                              fontSize: 13,
                             ),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              side: BorderSide(
+                                color: isSelected ? Colors.transparent : const Color(0xFFE0DCE8),
+                                width: 1.5,
+                              ),
+                            ),
                           ),
                         );
                       }).toList(),
@@ -269,21 +326,19 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-          ),
 
-          // Results Count Sliver
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+            // Results Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
               child: Row(
                 children: [
-                  Text(
+                  const Text(
                     'Nearby Workshops',
                     style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade900,
-                      letterSpacing: -0.5,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2D2A3A),
+                      letterSpacing: -0.3,
                     ),
                   ),
                   const Spacer(),
@@ -291,93 +346,101 @@ class _HomePageState extends State<HomePage> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
+                        color: const Color(0xFF5E4B8C).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.blue.shade200),
                       ),
                       child: Text(
                         '${workshops.length} found',
-                        style: TextStyle(
-                          color: Colors.blue.shade700,
+                        style: const TextStyle(
+                          color: Color(0xFF5E4B8C),
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                          fontSize: 13,
                         ),
                       ),
                     ),
                 ],
               ),
             ),
-          ),
 
-          // Workshops List Sliver
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: _buildWorkshopsSliver(),
-          ),
-
-          // Bottom Padding
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 16),
-          ),
-        ],
+            // Workshops List
+            Expanded(
+              child: _buildWorkshopsList(),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildWorkshopsSliver() {
+  Widget _buildWorkshopsList() {
     if (isLoadingLocation || isLoadingWorkshops) {
-      return SliverFillRemaining(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade400),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(
+              width: 48,
+              height: 48,
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF5E4B8C)),
+                strokeWidth: 3,
               ),
-              const SizedBox(height: 16),
-              Text(
-                isLoadingLocation ? 'Getting your location...' : 'Finding workshops...',
-                style: TextStyle(color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              isLoadingLocation ? 'Getting your location...' : 'Finding premium workshops...',
+              style: TextStyle(
+                color: const Color(0xFF6B6578),
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
 
     if (errorMessage != null) {
-      return SliverFillRemaining(
-        child: Center(
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.error_outline_rounded,
-                size: 64,
-                color: Colors.grey.shade400,
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF5E4B8C).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  size: 48,
+                  color: Color(0xFF5E4B8C),
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               Text(
                 errorMessage!,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.grey.shade600,
+                  color: const Color(0xFF4A4556),
                   fontSize: 15,
+                  height: 1.5,
                 ),
               ),
               const SizedBox(height: 24),
-              FilledButton.icon(
+              FilledButton(
                 onPressed: _loadLocation,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Try Again'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.blue.shade600,
+                  backgroundColor: const Color(0xFF5E4B8C),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
+                child: const Text('Try Again'),
               ),
             ],
           ),
@@ -386,114 +449,93 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (workshops.isEmpty) {
-      return SliverFillRemaining(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.garage_outlined,
-                size: 80,
-                color: Colors.grey.shade300,
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF5E4B8C).withOpacity(0.1),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(height: 16),
-              Text(
-                'No workshops found',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade700,
+              child: const Icon(
+                Icons.garage_rounded,
+                size: 48,
+                color: Color(0xFF5E4B8C),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'No workshops found',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF2D2A3A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Try increasing the search radius',
+              style: TextStyle(
+                color: const Color(0xFF6B6578),
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 24),
+            OutlinedButton(
+              onPressed: _fetchNearbyWorkshops,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF5E4B8C),
+                side: const BorderSide(color: Color(0xFF5E4B8C), width: 1.5),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Try increasing the search radius',
-                style: TextStyle(color: Colors.grey.shade500),
-              ),
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: _fetchNearbyWorkshops,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Refresh'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.blue.shade600,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
-              ),
-            ],
-          ),
+              child: const Text('Refresh'),
+            ),
+          ],
         ),
       );
     }
 
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          return WorkshopCard(
-            workshop: workshops[index],
-            onTap: () => _openInGoogleMaps(workshops[index]),
-          );
-        },
-        childCount: workshops.length,
-      ),
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: workshops.length,
+      itemBuilder: (context, index) {
+        return PremiumWorkshopCard(
+          workshop: workshops[index],
+          onTap: () => _openInGoogleMaps(workshops[index]),
+        );
+      },
     );
   }
 }
 
-class WorkshopCard extends StatelessWidget {
+class PremiumWorkshopCard extends StatelessWidget {
   final Workshop workshop;
   final VoidCallback onTap;
 
-  const WorkshopCard({
+  const PremiumWorkshopCard({
     super.key,
     required this.workshop,
     required this.onTap,
   });
 
-  Color _getTypeColor(String type) {
-    if (type.contains('repair') || type.contains('mechanic')) {
-      return Colors.blue;
-    }
-    if (type.contains('wash')) {
-      return Colors.green;
-    }
-    if (type.contains('tyre') || type.contains('tire')) {
-      return Colors.orange;
-    }
-    return Colors.purple;
-  }
-
-  String _getTypeIcon(String type) {
-    if (type.contains('repair') || type.contains('mechanic')) {
-      return '🔧';
-    }
-    if (type.contains('wash')) {
-      return '🧼';
-    }
-    if (type.contains('tyre') || type.contains('tire')) {
-      return '⚙️';
-    }
-    return '🔨';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final typeColor = _getTypeColor(workshop.workshopType);
-    final typeIcon = _getTypeIcon(workshop.workshopType);
+    final status = workshop.statusInfo;
     
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -504,29 +546,32 @@ class WorkshopCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(20),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header with name and type
+                // Header with icon and name
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: 52,
+                      height: 52,
                       decoration: BoxDecoration(
-                        color: typeColor.withOpacity(0.1),
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF5E4B8C).withOpacity(0.1),
+                            const Color(0xFF8A6FB0).withOpacity(0.1),
+                          ],
+                        ),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Center(
-                        child: Text(
-                          typeIcon,
-                          style: const TextStyle(fontSize: 24),
-                        ),
+                      child: Icon(
+                        workshop.typeIcon,
+                        color: const Color(0xFF5E4B8C),
+                        size: 28,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -534,30 +579,31 @@ class WorkshopCard extends StatelessWidget {
                           Text(
                             workshop.name,
                             style: const TextStyle(
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w600,
                               fontSize: 16,
+                              color: Color(0xFF2D2A3A),
                               height: 1.2,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
+                              horizontal: 10,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: typeColor.withOpacity(0.1),
+                              color: const Color(0xFF5E4B8C).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
-                              workshop.workshopType.replaceAll('_', ' ').toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 10,
+                              workshop.typeDisplay,
+                              style: const TextStyle(
+                                fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: typeColor,
-                                letterSpacing: 0.5,
+                                color: Color(0xFF5E4B8C),
+                                letterSpacing: 0.3,
                               ),
                             ),
                           ),
@@ -569,29 +615,30 @@ class WorkshopCard extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
-                // Rating and distance
+                // Rating and distance row
                 Row(
                   children: [
                     // Rating
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
+                        color: const Color(0xFFFFB800).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.star_rounded,
                             size: 16,
-                            color: Colors.amber.shade700,
+                            color: Color(0xFFFFB800),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             workshop.rating.toStringAsFixed(1),
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: Colors.amber.shade800,
+                              color: Color(0xFF2D2A3A),
+                              fontSize: 13,
                             ),
                           ),
                         ],
@@ -603,22 +650,23 @@ class WorkshopCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
+                        color: const Color(0xFF5E4B8C).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
                         children: [
                           Icon(
-                            Icons.directions_car_rounded,
+                            Icons.navigation_rounded,
                             size: 16,
-                            color: Colors.blue.shade700,
+                            color: const Color(0xFF5E4B8C),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             workshop.formattedDistance,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: Colors.blue.shade800,
+                              color: Color(0xFF2D2A3A),
+                              fontSize: 13,
                             ),
                           ),
                         ],
@@ -627,123 +675,149 @@ class WorkshopCard extends StatelessWidget {
                   ],
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
                 // Status
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: workshop.status.contains('Open') 
-                        ? Colors.green.shade50
-                        : Colors.red.shade50,
+                    color: (status['color'] as Color).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: workshop.status.contains('Open') 
-                              ? Colors.green 
-                              : Colors.red,
-                          shape: BoxShape.circle,
-                        ),
+                      Icon(
+                        status['icon'] as IconData,
+                        size: 16,
+                        color: status['color'] as Color,
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        workshop.status,
+                        status['text'] as String,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: workshop.status.contains('Open') 
-                              ? Colors.green.shade700 
-                              : Colors.red.shade700,
+                          color: status['color'] as Color,
                         ),
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
-                // Address
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.location_on_rounded,
-                      size: 16,
-                      color: Colors.grey.shade500,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        workshop.address,
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: 13,
-                          height: 1.3,
+                // Address with premium styling
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F7FA),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.location_on_rounded,
+                        size: 18,
+                        color: const Color(0xFF6B6578),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          workshop.address,
+                          style: TextStyle(
+                            color: const Color(0xFF4A4556),
+                            fontSize: 13,
+                            height: 1.4,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
 
                 // Phone if available
                 if (workshop.phone.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.phone_rounded,
-                        size: 16,
-                        color: Colors.grey.shade500,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        workshop.phone,
-                        style: TextStyle(
-                          color: Colors.blue.shade700,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F7FA),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.phone_rounded,
+                          size: 18,
+                          color: const Color(0xFF5E4B8C),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 10),
+                        Text(
+                          workshop.phone,
+                          style: TextStyle(
+                            color: const Color(0xFF5E4B8C),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
 
                 const SizedBox(height: 16),
 
-                // Open in maps button
+                // Premium Open in Maps button
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF5E4B8C),
+                            const Color(0xFF8A6FB0),
+                          ],
+                        ),
                         borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Open in Maps',
-                            style: TextStyle(
-                              color: Colors.blue.shade700,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.open_in_new_rounded,
-                            size: 14,
-                            color: Colors.blue.shade700,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF5E4B8C).withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
                         ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: onTap,
+                          borderRadius: BorderRadius.circular(30),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Open in Maps',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                SizedBox(width: 6),
+                                Icon(
+                                  Icons.open_in_new_rounded,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],
