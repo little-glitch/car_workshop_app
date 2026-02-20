@@ -206,8 +206,12 @@ class _HomePageState extends State<HomePage> {
                           setState(() {
                             selectedRadius = radius;
                           });
-                          _fetchNearbyWorkshops();
+                          _fetchNearbyWorkshops(); // This will now trigger with new radius
                         },
+                        selectedColor: Theme.of(context).colorScheme.primary,
+                        labelStyle: TextStyle(
+                          color: isSelected ? Colors.white : null,
+                        ),
                       ),
                     );
                   }).toList(),
@@ -327,7 +331,7 @@ class PremiumWorkshopCard extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // Rating + Distance
+              // Rating + Distance (Single instance - removed duplicate)
               Row(
                 children: [
                   Chip(
@@ -346,32 +350,14 @@ class PremiumWorkshopCard extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-
-                // Rating + Distance
-                Row(
-                  children: [
-                    Chip(
-                      avatar: const Icon(Icons.star_rounded, color: Color(0xFFFFB800)),
-                      label: Text(workshop.rating.toStringAsFixed(1)),
-                      backgroundColor: const Color(0xFFFFB800).withOpacity(0.1),
-                    ),
-                    const SizedBox(width: 8),
-                    Chip(
-                      avatar: const Icon(Icons.navigation_rounded, color: Color(0xFF5E4B8C)),
-                      label: Text(workshop.formattedDistance),
-                      backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                    ),
-                  ],
-                ),
-
-              const SizedBox(height: 16),
-
               // Status
               Chip(
                 avatar: Icon(
                   status['status'] == 'open'
                       ? Icons.check_circle_rounded
-                      : Icons.cancel_rounded,
+                      : status['status'] == 'closed'
+                          ? Icons.cancel_rounded
+                          : Icons.access_time_rounded,
                   color: statusColor,
                 ),
                 label: Text(status['text']),
@@ -380,7 +366,7 @@ class PremiumWorkshopCard extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // Address
+              // Address - Now showing
               Row(
                 children: [
                   const Icon(Icons.location_on_rounded, size: 18, color: Color(0xFF6B6578)),
@@ -394,23 +380,7 @@ class PremiumWorkshopCard extends StatelessWidget {
                 ],
               ),
 
-              // Phone (optional)
-              if (workshop.phone.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    const Icon(Icons.phone_rounded, size: 18, color: Color(0xFF5E4B8C)),
-                    const SizedBox(width: 8),
-                    Text(
-                      workshop.phone,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
-                  ],
-                ),
-              ],
+              // Phone - REMOVED (as requested)
 
               const SizedBox(height: 20),
 
