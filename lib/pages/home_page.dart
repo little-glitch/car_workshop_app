@@ -78,7 +78,7 @@ class _HomePageState extends State<HomePage> {
       final results = await WorkshopService.fetchNearbyWorkshops(
         lat!,
         lng!,
-        selectedRadius * 1000,
+        selectedRadius * 1000, // Convert km to meters
       );
 
       setState(() {
@@ -203,14 +203,17 @@ class _HomePageState extends State<HomePage> {
                         label: Text('$radius km'),
                         selected: isSelected,
                         onSelected: (selected) {
-                          setState(() {
-                            selectedRadius = radius;
-                          });
-                          _fetchNearbyWorkshops(); // This will now trigger with new radius
+                          if (selected) {
+                            setState(() {
+                              selectedRadius = radius;
+                            });
+                            _fetchNearbyWorkshops(); // This will now trigger with the new radius
+                          }
                         },
                         selectedColor: Theme.of(context).colorScheme.primary,
                         labelStyle: TextStyle(
                           color: isSelected ? Colors.white : null,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     );
@@ -256,11 +259,62 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (errorMessage != null) {
-      return Center(child: Text(errorMessage!));
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline_rounded,
+                size: 48,
+                color: Colors.grey.shade400,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                errorMessage!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _fetchNearbyWorkshops,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Try Again'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     if (workshops.isEmpty) {
-      return const Center(child: Text('No workshops found'));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.storefront_outlined,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No workshops found',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Try increasing the search radius',
+              style: TextStyle(color: Colors.grey.shade500),
+            ),
+          ],
+        ),
+      );
     }
 
     return ListView.builder(
@@ -331,26 +385,28 @@ class PremiumWorkshopCard extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // Rating + Distance (Single instance - removed duplicate)
+              // Rating + Distance
               Row(
                 children: [
                   Chip(
-                    avatar: const Icon(Icons.star_rounded, color: Color(0xFFFFB800)),
+                    avatar: const Icon(Icons.star_rounded, color: Color(0xFFFFB800), size: 18),
                     label: Text(workshop.rating.toStringAsFixed(1)),
                     backgroundColor: const Color(0xFFFFB800).withOpacity(0.1),
+                    visualDensity: VisualDensity.compact,
                   ),
                   const SizedBox(width: 8),
                   Chip(
-                    avatar: const Icon(Icons.navigation_rounded, color: Color(0xFF5E4B8C)),
+                    avatar: const Icon(Icons.navigation_rounded, color: Color(0xFF5E4B8C), size: 18),
                     label: Text(workshop.formattedDistance),
                     backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    visualDensity: VisualDensity.compact,
                   ),
                 ],
               ),
 
               const SizedBox(height: 16),
 
-              // Status
+              // Status chip
               Chip(
                 avatar: Icon(
                   status['status'] == 'open'
@@ -359,28 +415,31 @@ class PremiumWorkshopCard extends StatelessWidget {
                           ? Icons.cancel_rounded
                           : Icons.access_time_rounded,
                   color: statusColor,
+                  size: 18,
                 ),
                 label: Text(status['text']),
                 backgroundColor: statusColor.withOpacity(0.1),
+                visualDensity: VisualDensity.compact,
               ),
 
               const SizedBox(height: 16),
 
-              // Address - Now showing
+              // Address
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Icon(Icons.location_on_rounded, size: 18, color: Color(0xFF6B6578)),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       workshop.address,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey.shade700,
+                      ),
                     ),
                   ),
                 ],
               ),
-
-              // Phone - REMOVED (as requested)
 
               const SizedBox(height: 20),
 
@@ -389,12 +448,13 @@ class PremiumWorkshopCard extends StatelessWidget {
                 alignment: Alignment.centerRight,
                 child: FilledButton.icon(
                   onPressed: onTap,
-                  icon: const Icon(Icons.open_in_new_rounded),
+                  icon: const Icon(Icons.open_in_new_rounded, size: 18),
                   label: const Text('Open in Maps'),
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
+                    visualDensity: VisualDensity.compact,
                   ),
                 ),
               ),
