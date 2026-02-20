@@ -308,15 +308,15 @@ class PremiumWorkshopCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: Text(
-                      workshop.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  child: Text(
+                    workshop.name,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
+                ),
                 ],
               ),
 
@@ -330,4 +330,83 @@ class PremiumWorkshopCard extends StatelessWidget {
                     label: Text(workshop.rating.toStringAsFixed(1)),
                     backgroundColor: const Color(0xFFFFB800).withOpacity(0.1),
                   ),
-                  const SizedBox(width: 
+                  const SizedBox(width: 8),
+                  Chip(
+                    avatar: const Icon(Icons.navigation_rounded, color: Color(0xFF5E4B8C)),
+                    label: Text(workshop.formattedDistance),
+                    backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Status
+              Chip(
+                avatar: Icon(
+                  status['status'] == 'open'
+                      ? Icons.check_circle_rounded
+                      : Icons.cancel_rounded,
+                  color: statusColor,
+                ),
+                label: Text(status['text']),
+                backgroundColor: statusColor.withOpacity(0.1),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Address
+              Row(
+                children: [
+                  const Icon(Icons.location_on_rounded, size: 18, color: Color(0xFF6B6578)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      workshop.address,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+
+              // Phone (optional)
+              if (workshop.phone.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Icon(Icons.phone_rounded, size: 18, color: Color(0xFF5E4B8C)),
+                    const SizedBox(width: 8),
+                    Text(
+                      workshop.phone,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                    ),
+                  ],
+                ),
+              ],
+
+              const SizedBox(height: 20),
+
+              // Open in Maps button
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton.icon(
+                  onPressed: onTap,
+                  icon: const Icon(Icons.open_in_new_rounded),
+                  label: const Text('Open in Maps'),
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
