@@ -137,7 +137,7 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Theme.of(context).colorScheme.surface,
         appBar: AppBar(
           title: const Text(
-            'Premium Workshops',
+            'AutoCare Finder',
             style: TextStyle(fontWeight: FontWeight.w600, fontSize: 22),
           ),
           centerTitle: false,
@@ -189,24 +189,29 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // Radius selector
+            // Radius selector (horizontal scroll)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Wrap(
-                spacing: 10,
-                children: radiusOptions.map((radius) {
-                  final isSelected = radius == selectedRadius;
-                  return FilterChip(
-                    label: Text('$radius km'),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setState(() {
-                        selectedRadius = radius;
-                      });
-                      _fetchNearbyWorkshops();
-                    },
-                  );
-                }).toList(),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: radiusOptions.map((radius) {
+                    final isSelected = radius == selectedRadius;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text('$radius km'),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            selectedRadius = radius;
+                          });
+                          _fetchNearbyWorkshops();
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
             ),
 
@@ -308,15 +313,15 @@ class PremiumWorkshopCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                  child: Text(
-                    workshop.name,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    child: Text(
+                      workshop.name,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
                 ],
               ),
 
@@ -338,6 +343,26 @@ class PremiumWorkshopCard extends StatelessWidget {
                   ),
                 ],
               ),
+
+              const SizedBox(height: 16),
+
+
+                // Rating + Distance
+                Row(
+                  children: [
+                    Chip(
+                      avatar: const Icon(Icons.star_rounded, color: Color(0xFFFFB800)),
+                      label: Text(workshop.rating.toStringAsFixed(1)),
+                      backgroundColor: const Color(0xFFFFB800).withOpacity(0.1),
+                    ),
+                    const SizedBox(width: 8),
+                    Chip(
+                      avatar: const Icon(Icons.navigation_rounded, color: Color(0xFF5E4B8C)),
+                      label: Text(workshop.formattedDistance),
+                      backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    ),
+                  ],
+                ),
 
               const SizedBox(height: 16),
 
